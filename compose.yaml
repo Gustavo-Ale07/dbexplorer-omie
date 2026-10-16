@@ -1,0 +1,65 @@
+# Omie SQL Explorer — app + PostgreSQL.
+#   cp .env.example .env && nano .env && docker compose up -d --build
+# PostgreSQL is reachable only on the internal network (no published port).
+
+name: dbexplorer-omie
+
+services:
+  app:
+    build: .
+    image: dbexplorer-omie:latest
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # Built from POSTGRES_* so the credentials live in one place.
+      # Set DATABASE_URL in .env to use an external database instead.
+      DATABASE_URL: ${DATABASE_URL:-postgres://${POSTGRES_USER:-dbexplorer}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:-dbexplorer}}
+      HOST: 0.0.0.0
+      PORT: 3001
+    ports:
+      # Loopback only by default: put Nginx/Caddy (HTTPS) in front of it.
+      # Set APP_BIND=0.0.0.0 to expose it directly (not recommended).
+      - '${APP_BIND:-127.0.0.1}:${APP_PORT:-3001}:3001'
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - internal
+      - egress
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-dbexplorer}
+      POSTGRES_USER: ${POSTGRES_USER:-dbexplorer}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks:
+      - internal
+    security_opt:
+      - no-new-privileges:true
+
+networks:
+  # No route to the outside world: only the app talks to the database.
+  internal:
+    internal: true
+  # The app needs outbound HTTPS to reach the Omie API.
+  egress: {}
+
+volumes:
+  db-data:

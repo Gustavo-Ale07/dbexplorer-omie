@@ -26,9 +26,12 @@ export async function systemRoutes(app: FastifyInstance): Promise<void> {
       : { status: 'unknown', checkedAt: null };
   let lastCheck = 0;
 
-  app.get('/health/live', async () => ({ status: 'ok' }));
+  // Probes hit these every few seconds; keep them out of the info-level request log.
+  const probe = { logLevel: 'warn' } as const;
 
-  app.get('/health/ready', async (_request, reply) => {
+  app.get('/health/live', probe, async () => ({ status: 'ok' }));
+
+  app.get('/health/ready', probe, async (_request, reply) => {
     const checks: Record<string, 'ok' | 'error'> = { database: 'ok', registry: 'ok' };
     try {
       await database.ping();

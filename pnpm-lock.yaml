@@ -41,18 +41,6 @@ importers:
 
   apps/api:
     dependencies:
-      '@dbx/database':
-        specifier: workspace:*
-        version: link:../../packages/database
-      '@dbx/omie-client':
-        specifier: workspace:*
-        version: link:../../packages/omie-client
-      '@dbx/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
-      '@dbx/sql-engine':
-        specifier: workspace:*
-        version: link:../../packages/sql-engine
       '@electric-sql/pglite':
         specifier: 0.5.10
         version: 0.5.10
@@ -90,6 +78,18 @@ importers:
         specifier: 4.6.7
         version: 4.6.7
     devDependencies:
+      '@dbx/database':
+        specifier: workspace:*
+        version: link:../../packages/database
+      '@dbx/omie-client':
+        specifier: workspace:*
+        version: link:../../packages/omie-client
+      '@dbx/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
+      '@dbx/sql-engine':
+        specifier: workspace:*
+        version: link:../../packages/sql-engine
       esbuild:
         specifier: 0.28.2
         version: 0.28.2
