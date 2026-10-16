@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { AppError, isAppError } from '@dbx/shared';
 import { publicTrace } from '../services/omie';
-import { noStore, parseBody, requireAuth, requireRole } from '../http';
+import { clientIp, noStore, parseBody, requireAuth, requireRole } from '../http';
 
 const inspectBody = z
   .object({
@@ -19,7 +19,7 @@ interface Connectivity {
 }
 
 export async function systemRoutes(app: FastifyInstance): Promise<void> {
-  const { config, omie, database, startedAt } = app.services;
+  const { config, omie, database, audit, startedAt } = app.services;
   let connectivity: Connectivity =
     omie.mode === 'mock'
       ? { status: 'mock', checkedAt: null }
@@ -141,12 +141,37 @@ export async function systemRoutes(app: FastifyInstance): Promise<void> {
     { config: { rateLimit: { max: 30, timeWindow: '1 minute' } } },
     async (request, reply) => {
       noStore(reply);
-      requireAuth(request);
+      const auth = requireAuth(request);
       const body = parseBody(inspectBody, request.body);
       if (!omie.engine.inspectorCalls().some((c) => c.id === body.id)) {
         throw new AppError('FORBIDDEN', 'This Omie call is not in the inspector allowlist');
       }
-      const result = await omie.engine.inspect(body.id, body.param);
+      const started = performance.now();
+      const event = {
+        action: 'inspector.execute',
+        userId: auth.user.id,
+        userEmail: auth.user.email,
+        ip: clientIp(request),
+        requestId: request.id,
+        details: { call: body.id, param: body.param },
+      };
+      let result: Awaited<ReturnType<typeof omie.engine.inspect>>;
+      try {
+        result = await omie.engine.inspect(body.id, body.param);
+      } catch (err) {
+        await audit.record({
+          ...event,
+          status: 'failed',
+          errorCode: isAppError(err) ? err.code : 'INTERNAL_ERROR',
+          durationMs: Math.round(performance.now() - started),
+        });
+        throw err;
+      }
+      await audit.record({
+        ...event,
+        status: 'success',
+        durationMs: Math.round(performance.now() - started),
+      });
       return {
         request: result.request,
         response: result.response,

@@ -18,6 +18,7 @@ const ACTIONS = [
   'write.denied',
   'write.rejected',
   'ai.generate',
+  'inspector.execute',
   'user.create',
   'user.update',
   'user.reset_password',

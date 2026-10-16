@@ -758,7 +758,12 @@ describe('secret handling (live mode with fake Omie HTTP)', () => {
       },
     });
     const history = await h.call(cookie, { method: 'GET', url: '/api/history' });
-    for (const r of [res, status, calls, history]) {
+    const audit = await h.call(cookie, {
+      method: 'GET',
+      url: '/api/audit?action=inspector.execute',
+    });
+    expect(audit.json().items).toHaveLength(1);
+    for (const r of [res, status, calls, history, audit]) {
       // …but never comes back to the browser.
       expect(r.body).not.toContain(FAKE_APP_SECRET);
       expect(r.body).not.toContain(FAKE_APP_KEY);
