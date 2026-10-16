@@ -69,10 +69,16 @@ async function main(): Promise<void> {
   );
 }
 
+/** Messages of an error and its causes (driver errors are wrapped, e.g. by Drizzle). */
+function describeError(err: unknown): string {
+  const parts: string[] = [];
+  for (let e: unknown = err; e instanceof Error && parts.length < 5; e = e.cause) {
+    parts.push(e.message);
+  }
+  return parts.length > 0 ? parts.join(' — caused by: ') : 'unknown error';
+}
+
 main().catch((err: unknown) => {
-  console.error(
-    'Fatal error during startup:',
-    err instanceof Error ? err.message : 'unknown error',
-  );
+  console.error('Fatal error during startup:', describeError(err));
   process.exit(1);
 });
