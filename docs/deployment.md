@@ -39,7 +39,9 @@ curl -fsS http://127.0.0.1:3001/health/ready
 ```
 
 The app listens on `127.0.0.1:3001` on the host (`APP_BIND` / `APP_PORT`). PostgreSQL has no
-published port; it is reachable only from the `app` container on an internal network.
+published port; it is reachable only from the `app` container on an internal network. If another
+service already uses port 3001 on the host, set a free `APP_PORT` (e.g. `3101`) and point the
+reverse proxy at it; the container keeps listening on 3001 internally.
 
 ## Connecting to Omie
 

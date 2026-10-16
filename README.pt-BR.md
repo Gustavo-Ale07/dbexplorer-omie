@@ -18,6 +18,11 @@ faz joins e agregações, e mostra exatamente quais chamadas foram feitas. A esc
 `UPDATE`, `DELETE`) vem desativada. Quando está ativada, toda escrita mostra uma prévia e exige
 confirmação explícita.
 
+Não há acesso direto ao banco do Omie: toda leitura e escrita passa pela API pública oficial,
+então o que é possível fazer depende do que essa API oferece. O PostgreSQL incluído é apenas o
+banco interno da aplicação (usuários, sessões, histórico, consultas salvas e auditoria); os dados
+do Omie nunca são copiados para ele. É um projeto independente, não um produto oficial do Omie.
+
 > Isto não é um banco de dados. Não há transações, DDL nem rollback. Veja
 > [Limitações](#limitações).
 

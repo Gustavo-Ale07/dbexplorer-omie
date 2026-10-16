@@ -17,6 +17,11 @@ Omie calls, pushes filters to the API where it can, paginates, joins and aggrega
 exactly which calls it made. Writes (`INSERT`, `UPDATE`, `DELETE`) are disabled by default. When
 they are enabled, every write is previewed and has to be confirmed explicitly.
 
+It never touches Omie's own database: every read and write goes through the official public
+Omie API, so what you can do is bounded by what that API offers. The bundled PostgreSQL is only the
+application's internal store (users, sessions, query history, saved queries and the audit log);
+Omie data is never copied into it. This is an independent project, not an official Omie product.
+
 > This is not a database. There are no transactions, no DDL and no rollback. See
 > [Limitations](#limitations).
 
