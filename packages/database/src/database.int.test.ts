@@ -38,14 +38,12 @@ describe('database', () => {
         .values({ email: 'Upper@Example.com', name: 'U', passwordHash: 'x', role: 'VIEWER' }),
     ).rejects.toThrow();
     await expect(
-      handle.db
-        .insert(users)
-        .values({
-          email: 'root@example.com',
-          name: 'R',
-          passwordHash: 'x',
-          role: 'ROOT' as 'ADMIN',
-        }),
+      handle.db.insert(users).values({
+        email: 'root@example.com',
+        name: 'R',
+        passwordHash: 'x',
+        role: 'ROOT' as 'ADMIN',
+      }),
     ).rejects.toThrow();
   });
 
