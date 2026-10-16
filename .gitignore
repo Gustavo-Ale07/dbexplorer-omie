@@ -41,8 +41,3 @@ data/
 .idea/
 .DS_Store
 Thumbs.db
-
-# agent / tooling artifacts
-.claude/
-CLAUDE.md
-.superpowers/
