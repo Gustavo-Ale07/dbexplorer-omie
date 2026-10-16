@@ -102,8 +102,9 @@ proxy, set `TRUST_PROXY` so it reads `X-Forwarded-For` correctly:
 - `TRUST_PROXY=10.0.0.10,10.0.0.11` — trust only these proxy addresses.
 - `TRUST_PROXY=false` — the app is exposed directly; forwarded headers are ignored.
 
-Never set `TRUST_PROXY=true` when clients can reach the app without going through the proxy:
-they could spoof their IP and dodge rate limits.
+Never set `TRUST_PROXY=true` or a hop count when clients can reach the app without going through
+the proxy: they could spoof their IP and dodge rate limits. In production the app refuses to start
+with that combination when `APP_BIND` publishes it on a non-loopback address.
 
 `APP_URL` must match the origin users type in the browser. It is used for the CSRF origin check;
 a mismatch shows up as `CSRF_REJECTED`.

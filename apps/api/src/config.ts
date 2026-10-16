@@ -50,6 +50,8 @@ const envSchema = z.object({
   PORT: int(3001, 1, 65535),
   APP_URL: z.url().default('http://localhost:5173'),
   TRUST_PROXY: z.string().default('false'),
+  /** Host address compose publishes the port on (read only to catch an unsafe TRUST_PROXY). */
+  APP_BIND: optionalText,
   DATABASE_URL: z.string().min(1).default('pglite:memory'),
   MIGRATIONS_DIR: optionalText,
   STATIC_DIR: optionalText,
@@ -156,6 +158,11 @@ export class ConfigError extends Error {
   }
 }
 
+function isLoopback(host: string): boolean {
+  const h = host.trim().replace(/^\[|\]$/g, '');
+  return h === 'localhost' || h === '::1' || h.startsWith('127.');
+}
+
 function parseTrustProxy(value: string): boolean | number | string {
   const v = value.trim();
   if (v === '' || v === 'false' || v === '0') return false;
@@ -209,6 +216,11 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
     }
     if (e.LOG_LEVEL === 'trace' || e.LOG_LEVEL === 'debug')
       problems.push('LOG_LEVEL debug/trace is not allowed in production');
+    const trust = parseTrustProxy(e.TRUST_PROXY);
+    if (e.APP_BIND && !isLoopback(e.APP_BIND) && (trust === true || typeof trust === 'number'))
+      problems.push(
+        'TRUST_PROXY must be false or a list of proxy addresses when APP_BIND exposes the app directly (clients could spoof their IP)',
+      );
   }
 
   const omieUrl = new URL(e.OMIE_BASE_URL);

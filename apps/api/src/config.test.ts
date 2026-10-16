@@ -88,6 +88,18 @@ describe('loadConfig', () => {
     ).toMatch(/DATABASE_URL/);
   });
 
+  it('refuses a hop-count TRUST_PROXY when the app is published on a public address', () => {
+    expect(problemsOf({ ...PROD, APP_BIND: '0.0.0.0', TRUST_PROXY: '1' }).join()).toMatch(
+      /TRUST_PROXY/,
+    );
+    expect(problemsOf({ ...PROD, APP_BIND: '0.0.0.0', TRUST_PROXY: 'true' }).join()).toMatch(
+      /TRUST_PROXY/,
+    );
+    expect(problemsOf({ ...PROD, APP_BIND: '0.0.0.0', TRUST_PROXY: 'false' })).toEqual([]);
+    expect(problemsOf({ ...PROD, APP_BIND: '0.0.0.0', TRUST_PROXY: '10.0.0.10' })).toEqual([]);
+    expect(problemsOf({ ...PROD, APP_BIND: '127.0.0.1', TRUST_PROXY: '1' })).toEqual([]);
+  });
+
   it('requires credentials in live mode and the official Omie host in production', () => {
     expect(problemsOf({ OMIE_MODE: 'live' }).join()).toMatch(/OMIE_APP_KEY/);
     const p = problemsOf({
