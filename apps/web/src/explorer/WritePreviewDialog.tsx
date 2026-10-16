@@ -16,8 +16,14 @@ function useSecondsLeft(expiresAt: string | undefined): number {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     if (!expiresAt) return;
-    const t = setInterval(() => setNow(Date.now()), 500);
-    return () => clearInterval(t);
+    // The hook may have been mounted long before this preview: refresh right away.
+    const update = () => setNow(Date.now());
+    const first = setTimeout(update, 0);
+    const t = setInterval(update, 500);
+    return () => {
+      clearTimeout(first);
+      clearInterval(t);
+    };
   }, [expiresAt]);
   if (!expiresAt) return 0;
   return Math.max(0, Math.round((new Date(expiresAt).getTime() - now) / 1000));

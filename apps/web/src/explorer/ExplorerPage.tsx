@@ -403,8 +403,11 @@ export function ExplorerPage({ theme, openRequest, active }: Props) {
               {notice}
             </span>
           )}
-          <span className="ml-auto text-[11px] text-muted">
-            Ctrl+Enter executa a instrução sob o cursor (ou a seleção) · Ctrl+Space sugere
+          <span
+            className="ml-auto truncate text-[11px] text-muted"
+            title="Ctrl+Enter/F5 executa a instrução sob o cursor (ou a seleção) · Ctrl+Space sugere tabelas e colunas · Ctrl+S salva · Ctrl+Shift+E explica"
+          >
+            Ctrl+Enter executa · Ctrl+Space sugere · Ctrl+S salva
           </span>
         </div>
 

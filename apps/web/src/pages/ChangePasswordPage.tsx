@@ -63,7 +63,7 @@ export function ChangePasswordPage({ forced = false, onDone, onLogout }: Props) 
       </h1>
       {forced && (
         <p className="text-xs text-muted">
-          Sua senha foi definida por um administrador. Escolha uma senha pessoal para continuar.
+          Sua senha atual é provisória. Escolha uma senha pessoal para continuar.
         </p>
       )}
       <label className="block space-y-1">
@@ -90,10 +90,10 @@ export function ChangePasswordPage({ forced = false, onDone, onLogout }: Props) 
           onChange={(e) => setNext(e.target.value)}
           aria-describedby="pw-hint"
         />
-        <span id="pw-hint" className="block text-[11px] text-muted">
-          Mínimo de 12 caracteres, misturando maiúsculas, minúsculas, números e símbolos.
-        </span>
       </label>
+      <p id="pw-hint" className="-mt-2 text-[11px] text-muted">
+        Mínimo de 12 caracteres, misturando maiúsculas, minúsculas, números e símbolos.
+      </p>
       <label className="block space-y-1">
         <span className="text-xs font-medium">Confirmar nova senha</span>
         <input
