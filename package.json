@@ -17,7 +17,7 @@
     "format:check": "prettier --check .",
     "typecheck": "pnpm -r --parallel typecheck",
     "test": "vitest run",
-    "test:unit": "vitest run --project unit",
+    "test:unit": "vitest run --project unit --project web",
     "test:integration": "vitest run --project integration",
     "test:e2e": "pnpm --filter @dbx/e2e test",
     "db:generate": "pnpm --filter @dbx/database generate"

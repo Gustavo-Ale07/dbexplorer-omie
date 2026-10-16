@@ -31,7 +31,7 @@ jobs:
       - run: pnpm format:check
       - run: pnpm typecheck
       - name: Unit tests
-        run: pnpm vitest run --project unit --project web
+        run: pnpm test:unit
       - name: Integration tests
         run: pnpm test:integration
       - run: pnpm build
