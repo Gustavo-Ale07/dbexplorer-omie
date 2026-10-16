@@ -40,6 +40,12 @@ export interface BuildAppOptions {
 
 const REQUEST_ID = /^[A-Za-z0-9._-]{8,64}$/;
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
+const PASSWORD_CHANGE_ALLOWED = new Set([
+  '/api/auth/me',
+  '/api/auth/change-password',
+  '/api/auth/logout',
+  '/api/meta',
+]);
 
 export async function buildApp(options: BuildAppOptions): Promise<FastifyInstance> {
   const { config, database } = options;
@@ -135,6 +141,13 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
       const resolved = await services.sessions.resolve(token);
       if (resolved) request.auth = resolved;
       else void reply.clearCookie(config.session.cookieName, { path: '/' });
+    }
+    // Accounts created or reset by an admin must set their own password before anything else.
+    if (
+      request.auth?.user.mustChangePassword &&
+      !PASSWORD_CHANGE_ALLOWED.has(request.routeOptions.url ?? '')
+    ) {
+      throw new AppError('PASSWORD_CHANGE_REQUIRED', 'Change your password to continue');
     }
   });
 

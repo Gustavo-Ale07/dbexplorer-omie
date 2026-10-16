@@ -615,6 +615,29 @@ describe('admin', () => {
     });
     expect(login.statusCode).toBe(401);
 
+    // A reset forces the user to choose a new password before using the app.
+    await h.call(admin, {
+      method: 'PATCH',
+      url: `/api/admin/users/${id}`,
+      payload: { active: true },
+    });
+    await h.call(admin, {
+      method: 'POST',
+      url: `/api/admin/users/${id}/reset-password`,
+      payload: { password: 'Reset!Strong#Pass2' },
+    });
+    const temp = await h.login('nova@example.com', 'Reset!Strong#Pass2');
+    expect(codeOf(await query(h, temp, 'SHOW TABLES'))).toBe('PASSWORD_CHANGE_REQUIRED');
+    const changed = await h.call(temp, {
+      method: 'POST',
+      url: '/api/auth/change-password',
+      payload: { currentPassword: 'Reset!Strong#Pass2', newPassword: 'Mine!Strong#Pass3' },
+    });
+    expect(changed.statusCode, changed.body).toBe(200);
+    const fresh = changed.cookies.find((c) => c.name === 'dbx_session')!.value;
+    expect((await query(h, fresh, 'SHOW TABLES')).statusCode).toBe(200);
+    expect((await query(h, temp, 'SHOW TABLES')).statusCode).toBe(401);
+
     const audit = await h.call(admin, { method: 'GET', url: '/api/audit?action=user.create' });
     expect(audit.json().total).toBe(1);
   });
