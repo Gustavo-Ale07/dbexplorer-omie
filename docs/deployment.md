@@ -100,13 +100,21 @@ server {
 The app uses the client IP for rate limits, login lockout records and the audit log. Behind a
 proxy, set `TRUST_PROXY` so it reads `X-Forwarded-For` correctly:
 
-- `TRUST_PROXY=1` — one proxy in front (the usual Caddy/Nginx setup).
+- `TRUST_PROXY=loopback,uniquelocal` — a proxy on the same host (the usual Caddy/Nginx setup).
+  Docker forwards the published port from the network gateway, a private address, so the private
+  ranges have to be trusted; with `APP_BIND=127.0.0.1` only processes on the host can reach it.
 - `TRUST_PROXY=10.0.0.10,10.0.0.11` — trust only these proxy addresses.
 - `TRUST_PROXY=false` — the app is exposed directly; forwarded headers are ignored.
 
-Never set `TRUST_PROXY=true` or a hop count when clients can reach the app without going through
+Hop counts such as `TRUST_PROXY=1` are rejected at startup: Fastify ignores them, so every client
+would share the proxy's IP (one rate-limit bucket for everybody, useless audit IPs).
+
+Never set `TRUST_PROXY=true` or `uniquelocal` when clients can reach the app without going through
 the proxy: they could spoof their IP and dodge rate limits. In production the app refuses to start
 with that combination when `APP_BIND` publishes it on a non-loopback address.
+
+To check it, sign in and look at the IP column of **Auditoria**: it must show your public address,
+not `172.x.x.x`.
 
 `APP_URL` must match the origin users type in the browser. It is used for the CSRF origin check;
 a mismatch shows up as `CSRF_REJECTED`.

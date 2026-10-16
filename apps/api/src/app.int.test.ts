@@ -240,6 +240,27 @@ describe('authentication', () => {
   });
 });
 
+describe('client IP behind a reverse proxy', () => {
+  it('reads X-Forwarded-For from a local proxy reaching the app through Docker NAT', async () => {
+    const h = await setup({ TRUST_PROXY: 'loopback,uniquelocal' });
+    const res = await h.call(null, {
+      method: 'POST',
+      url: '/api/auth/login',
+      payload: { email: ADMIN.email, password: 'Wrong!Password1' },
+      // Spoofed entries from the client come first; the proxy appends the real address.
+      headers: { 'x-forwarded-for': '10.9.9.9, 203.0.113.7' },
+      remoteAddress: '172.27.0.1',
+    });
+    expect(res.statusCode).toBe(401);
+    const admin = await h.login();
+    const audit = await h.call(admin, {
+      method: 'GET',
+      url: '/api/audit?action=auth.login_failed',
+    });
+    expect((audit.json() as { items: { ip: string }[] }).items[0]?.ip).toBe('203.0.113.7');
+  });
+});
+
 describe('CSRF and request hygiene', () => {
   it('rejects state-changing requests from another origin or without origin', async () => {
     const h = await setup();

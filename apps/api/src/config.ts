@@ -107,7 +107,7 @@ export interface AppConfig {
   port: number;
   appUrl: string;
   appOrigin: string;
-  trustProxy: boolean | number | string;
+  trustProxy: boolean | string;
   databaseUrl: string;
   migrationsDir?: string;
   staticDir?: string;
@@ -163,12 +163,13 @@ function isLoopback(host: string): boolean {
   return h === 'localhost' || h === '::1' || h.startsWith('127.');
 }
 
-function parseTrustProxy(value: string): boolean | number | string {
+function parseTrustProxy(value: string): boolean | string {
   const v = value.trim();
   if (v === '' || v === 'false' || v === '0') return false;
   if (v === 'true') return true;
-  if (/^\d+$/.test(v)) return Number(v);
-  return v; // comma-separated list of trusted addresses / CIDRs
+  // Comma-separated trusted addresses, CIDRs or proxy-addr names (loopback, uniquelocal, …).
+  // A hop count is rejected in loadConfig: Fastify ignores it and every client would get the proxy IP.
+  return v;
 }
 
 /** Rough strength check: length plus character variety, so "aaaa…" or a word list fails. */
@@ -195,6 +196,12 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
   const problems: string[] = [];
   const isProduction = e.NODE_ENV === 'production';
   const appUrl = new URL(e.APP_URL);
+  const trust = parseTrustProxy(e.TRUST_PROXY);
+  if (typeof trust === 'string' && /^\d+$/.test(trust)) {
+    problems.push(
+      'TRUST_PROXY hop counts are not supported (every client would get the proxy IP): use loopback,uniquelocal behind a local reverse proxy, or the proxy addresses',
+    );
+  }
 
   if (isProduction) {
     if (isWeakSecret(e.SESSION_SECRET)) {
@@ -216,8 +223,13 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
     }
     if (e.LOG_LEVEL === 'trace' || e.LOG_LEVEL === 'debug')
       problems.push('LOG_LEVEL debug/trace is not allowed in production');
-    const trust = parseTrustProxy(e.TRUST_PROXY);
-    if (e.APP_BIND && !isLoopback(e.APP_BIND) && (trust === true || typeof trust === 'number'))
+    // Published directly, clients reach the app through Docker's NAT with a private source address,
+    // so trusting everything or the private ranges would let them spoof X-Forwarded-For.
+    if (
+      e.APP_BIND &&
+      !isLoopback(e.APP_BIND) &&
+      (trust === true || (typeof trust === 'string' && /uniquelocal/i.test(trust)))
+    )
       problems.push(
         'TRUST_PROXY must be false or a list of proxy addresses when APP_BIND exposes the app directly (clients could spoof their IP)',
       );
@@ -257,7 +269,7 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
     port: e.PORT,
     appUrl: e.APP_URL,
     appOrigin: appUrl.origin,
-    trustProxy: parseTrustProxy(e.TRUST_PROXY),
+    trustProxy: trust,
     databaseUrl: e.DATABASE_URL,
     ...(e.MIGRATIONS_DIR ? { migrationsDir: e.MIGRATIONS_DIR } : {}),
     ...(e.STATIC_DIR ? { staticDir: e.STATIC_DIR } : {}),

@@ -51,8 +51,7 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
   const { config, database } = options;
   const app = Fastify({
     logger: options.logger ?? loggerOptions(config.logLevel, secretValues(config)),
-    // A number means "trust the nth hop" (supported by proxy-addr, missing from the typings).
-    trustProxy: config.trustProxy as boolean | string,
+    trustProxy: config.trustProxy,
     bodyLimit: 256 * 1024,
     requestIdHeader: false,
     genReqId: (req) => {

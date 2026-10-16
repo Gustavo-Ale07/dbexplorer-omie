@@ -88,16 +88,22 @@ describe('loadConfig', () => {
     ).toMatch(/DATABASE_URL/);
   });
 
-  it('refuses a hop-count TRUST_PROXY when the app is published on a public address', () => {
-    expect(problemsOf({ ...PROD, APP_BIND: '0.0.0.0', TRUST_PROXY: '1' }).join()).toMatch(
-      /TRUST_PROXY/,
-    );
-    expect(problemsOf({ ...PROD, APP_BIND: '0.0.0.0', TRUST_PROXY: 'true' }).join()).toMatch(
-      /TRUST_PROXY/,
-    );
+  it('refuses a TRUST_PROXY that lets direct clients spoof their IP on a public address', () => {
+    for (const value of ['true', 'loopback,uniquelocal']) {
+      expect(problemsOf({ ...PROD, APP_BIND: '0.0.0.0', TRUST_PROXY: value }).join()).toMatch(
+        /TRUST_PROXY/,
+      );
+    }
     expect(problemsOf({ ...PROD, APP_BIND: '0.0.0.0', TRUST_PROXY: 'false' })).toEqual([]);
     expect(problemsOf({ ...PROD, APP_BIND: '0.0.0.0', TRUST_PROXY: '10.0.0.10' })).toEqual([]);
-    expect(problemsOf({ ...PROD, APP_BIND: '127.0.0.1', TRUST_PROXY: '1' })).toEqual([]);
+    expect(
+      problemsOf({ ...PROD, APP_BIND: '127.0.0.1', TRUST_PROXY: 'loopback,uniquelocal' }),
+    ).toEqual([]);
+  });
+
+  it('refuses hop-count TRUST_PROXY values, which Fastify ignores', () => {
+    expect(problemsOf({ ...PROD, TRUST_PROXY: '1' }).join()).toMatch(/hop count/);
+    expect(problemsOf({ ...PROD, TRUST_PROXY: '0' })).toEqual([]);
   });
 
   it('requires credentials in live mode and the official Omie host in production', () => {
