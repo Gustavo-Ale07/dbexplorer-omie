@@ -34,7 +34,7 @@ describe('redact', () => {
 
   it('does not mutate the input and keeps non-sensitive keys', () => {
     const input = { descricao: 'Parafuso', valor_unitario: 1.5, tokenizer: 'keep?' };
-    const copy = structuredClone(input);
+    const copy = JSON.parse(JSON.stringify(input)) as typeof input;
     const out = redact(input);
     expect(input).toEqual(copy);
     expect(out).toEqual({ descricao: 'Parafuso', valor_unitario: 1.5, tokenizer: 'keep?' });
@@ -57,7 +57,10 @@ describe('redact', () => {
 describe('createRedactor', () => {
   it('scrubs known secret values embedded in strings', () => {
     const r = createRedactor(['SUPERSECRET123456', 'short']);
-    const out = r({ message: 'auth failed for SUPERSECRET123456 at x', list: ['SUPERSECRET123456'] });
+    const out = r({
+      message: 'auth failed for SUPERSECRET123456 at x',
+      list: ['SUPERSECRET123456'],
+    });
     expect(JSON.stringify(out)).not.toContain('SUPERSECRET123456');
     expect(out).toEqual({ message: `auth failed for ${REDACTED} at x`, list: [REDACTED] });
   });
@@ -70,5 +73,19 @@ describe('createRedactor', () => {
   it('redacts plain strings', () => {
     const r = createRedactor(['TOPSECRETVALUE']);
     expect(r('x TOPSECRETVALUE y')).toBe(`x ${REDACTED} y`);
+  });
+});
+
+describe('createRedactor with errors and dates', () => {
+  it('keeps (scrubbed) error messages and stacks and preserves dates', () => {
+    const scrub = createRedactor(['super-secret-value']);
+    const out = scrub({
+      err: new Error('failed with super-secret-value'),
+      at: new Date('2026-01-01T00:00:00Z'),
+    }) as { err: { message: string; stack: string }; at: Date };
+    expect(out.err.message).toBe(`failed with ${REDACTED}`);
+    expect(out.err.stack).not.toContain('super-secret-value');
+    expect(out.at).toBeInstanceOf(Date);
+    expect(out.at.toISOString()).toBe('2026-01-01T00:00:00.000Z');
   });
 });

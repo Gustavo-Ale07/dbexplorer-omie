@@ -43,10 +43,21 @@ type StringScrubber = (s: string) => string;
 function walk(value: unknown, scrub: StringScrubber, seen: WeakSet<object>): unknown {
   if (typeof value === 'string') return scrub(value);
   if (value === null || typeof value !== 'object') return value;
+  if (value instanceof Date) return new Date(value.getTime());
   if (seen.has(value)) return '[Circular]';
   seen.add(value);
 
   if (Array.isArray(value)) return value.map((item) => walk(item, scrub, seen));
+  if (value instanceof Error) {
+    // Own enumerable props miss message/stack; keep them (scrubbed).
+    const err: Record<string, unknown> = { name: value.name, message: scrub(value.message) };
+    if (value.stack) err.stack = scrub(value.stack);
+    for (const [key, child] of Object.entries(value)) {
+      if (key === '__proto__' || key === 'constructor' || key === 'prototype') continue;
+      err[key] = isSensitiveKey(key) ? REDACTED : walk(child, scrub, seen);
+    }
+    return err;
+  }
 
   const out: Record<string, unknown> = {};
   for (const [key, child] of Object.entries(value)) {

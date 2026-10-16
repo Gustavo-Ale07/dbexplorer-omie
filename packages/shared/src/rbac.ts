@@ -1,7 +1,8 @@
 export const ROLES = ['VIEWER', 'OPERATOR', 'ADMIN'] as const;
 export type Role = (typeof ROLES)[number];
 
-export type StatementKind = 'SELECT' | 'SHOW' | 'DESCRIBE' | 'EXPLAIN' | 'INSERT' | 'UPDATE' | 'DELETE';
+export type StatementKind =
+  'SELECT' | 'SHOW' | 'DESCRIBE' | 'EXPLAIN' | 'INSERT' | 'UPDATE' | 'DELETE';
 export type WriteKind = Extract<StatementKind, 'INSERT' | 'UPDATE' | 'DELETE'>;
 
 const PERMISSIONS: Record<Role, ReadonlySet<StatementKind>> = {

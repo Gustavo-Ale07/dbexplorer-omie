@@ -26,7 +26,9 @@ describe('AppError', () => {
 
   it('serializes to a stable payload', () => {
     const p = toErrorPayload(new AppError('READ_ONLY_MODE', 'blocked'), 'req-1');
-    expect(p).toEqual({ error: { code: 'READ_ONLY_MODE', message: 'blocked', requestId: 'req-1' } });
+    expect(p).toEqual({
+      error: { code: 'READ_ONLY_MODE', message: 'blocked', requestId: 'req-1' },
+    });
   });
 
   it('hides internal error messages behind INTERNAL_ERROR', () => {
