@@ -1,0 +1,48 @@
+# dependencies
+node_modules/
+
+# build output
+dist/
+build/
+coverage/
+*.tsbuildinfo
+
+# environment & secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+credentials
+credentials.*
+secrets/
+
+# logs
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# test artifacts
+test-results/
+playwright-report/
+blob-report/
+.vitest/
+
+# local data
+data/
+.pglite/
+
+# editors / OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+
+# agent / tooling artifacts
+.claude/
+CLAUDE.md
+.superpowers/
