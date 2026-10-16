@@ -463,14 +463,14 @@ export class SqlEngine {
     return this.options.client.describe({
       endpoint: entry.endpoint,
       call: entry.call,
-      param: sanitizeParam(param),
+      param: this.inspectorParam(param),
       kind: 'read',
     });
   }
 
   async inspect(id: string, param: unknown, opts: ExecuteOptions = {}): Promise<InspectorResult> {
     const entry = this.inspectorEntry(id);
-    const clean = sanitizeParam(param);
+    const clean = this.inspectorParam(param);
     const started = performance.now();
     const { ctx } = this.context(opts, { maxApiCalls: 1 });
     const { body, noRecords } = await ctx.read({
@@ -491,6 +491,17 @@ export class SqlEngine {
       durationMs: Math.round(performance.now() - started),
       ...(trace ? { trace } : {}),
     };
+  }
+
+  /** Sanitized param with page sizes clamped to OMIE_MAX_ROWS, like any other query. */
+  private inspectorParam(param: unknown): Record<string, unknown> {
+    const clean = sanitizeParam(param);
+    for (const key of PAGE_SIZE_KEYS) {
+      if (!(key in clean)) continue;
+      const n = Number(clean[key]);
+      if (!Number.isFinite(n) || n > this.limits.maxRows) clean[key] = this.limits.maxRows;
+    }
+    return clean;
   }
 
   private inspectorEntry(id: string): InspectorCall {
@@ -532,6 +543,9 @@ function schemaTable(r: ResourceDef): SchemaTable {
 const FORBIDDEN_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 
 /** Inspector params: plain JSON objects only, bounded in size and depth, no prototype keys. */
+/** Request keys that set the page size of Omie list calls. */
+const PAGE_SIZE_KEYS = ['registros_por_pagina', 'nRegPorPagina'] as const;
+
 export function sanitizeParam(param: unknown): Record<string, unknown> {
   if (param === null || typeof param !== 'object' || Array.isArray(param)) {
     throw new AppError('VALIDATION_ERROR', 'param must be a JSON object.');

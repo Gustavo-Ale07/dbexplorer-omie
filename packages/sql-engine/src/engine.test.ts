@@ -105,6 +105,16 @@ describe('SqlEngine · catalog', () => {
       ).code,
     ).toBe('VALIDATION_ERROR');
   });
+
+  it('clamps inspector page sizes to OMIE_MAX_ROWS', async () => {
+    const { engine } = setup({ maxRows: 3 });
+    const res = await engine.inspect('geral/clientes:ListarClientes', {
+      pagina: 1,
+      registros_por_pagina: 500,
+    });
+    expect((res.response.clientes_cadastro as unknown[]).length).toBe(3);
+    expect(JSON.stringify(res.request)).toContain('"registros_por_pagina":3');
+  });
 });
 
 describe('SqlEngine · access strategies', () => {
