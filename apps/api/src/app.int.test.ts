@@ -11,6 +11,7 @@ import { loadConfig } from './config';
 import { createMockProvider } from './ai/providers';
 import { loggerOptions } from './logger';
 import { secretValues } from './config';
+import { UsersService } from './services/users';
 
 const ORIGIN = 'http://localhost:5173';
 const ADMIN = { email: 'admin@example.com', password: 'Adm1n!Strong#Pass' };
@@ -69,6 +70,9 @@ async function setup(
     ...extra,
   });
   await app.services.users.bootstrapAdmin(config.bootstrapAdmin);
+  // Most tests act as an admin who already replaced the bootstrap password.
+  const admin = await app.services.users.findByEmail(ADMIN.email);
+  if (admin) await app.services.users.setPassword(admin.id, ADMIN.password, false);
 
   const call: Harness['call'] = (cookie, opts) =>
     app.inject({
@@ -640,6 +644,30 @@ describe('admin', () => {
 
     const audit = await h.call(admin, { method: 'GET', url: '/api/audit?action=user.create' });
     expect(audit.json().total).toBe(1);
+  });
+
+  it('forces the bootstrap admin to replace the .env password and never re-bootstraps', async () => {
+    const database = await createDatabase('pglite:memory');
+    try {
+      await database.migrate();
+      const users = new UsersService(database.db);
+      const boot = { email: 'boot@example.com', password: 'Boot!Strong#Pass9', name: 'Boot' };
+      expect(await users.bootstrapAdmin(boot)).toBe('created');
+      expect((await users.findByEmail(boot.email))?.mustChangePassword).toBe(true);
+      expect(await users.bootstrapAdmin({ ...boot, email: 'outro@example.com' })).toBe('skipped');
+      expect(await users.count()).toBe(1);
+    } finally {
+      await database.close();
+    }
+
+    const h = await setup();
+    const admin = await h.app.services.users.findByEmail(ADMIN.email);
+    await h.app.services.users.setPassword(admin!.id, ADMIN.password, true);
+    const cookie = await h.login();
+    expect(codeOf(await query(h, cookie, 'SHOW TABLES'))).toBe('PASSWORD_CHANGE_REQUIRED');
+    const me = await h.call(cookie, { method: 'GET', url: '/api/auth/me' });
+    expect(me.statusCode).toBe(200);
+    expect(me.json().user.mustChangePassword).toBe(true);
   });
 
   it('reports system status', async () => {

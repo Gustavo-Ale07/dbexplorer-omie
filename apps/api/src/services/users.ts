@@ -96,7 +96,8 @@ export class UsersService {
     if (!admin) return 'skipped';
     if ((await this.count()) > 0) return 'skipped';
     try {
-      await this.create({ ...admin, role: 'ADMIN' });
+      // The bootstrap password lives in .env, so it must be replaced on first login.
+      await this.create({ ...admin, role: 'ADMIN', mustChangePassword: true });
       return 'created';
     } catch (err) {
       // Another instance may have bootstrapped concurrently.
