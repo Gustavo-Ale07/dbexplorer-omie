@@ -10,9 +10,19 @@ export class ExecutionRegistry {
   private readonly running = new Map<string, Running>();
   private readonly writers = new Set<string>();
 
+  /** Caps the Omie traffic a single user can generate at once (on top of the global rate limit). */
+  static readonly MAX_PER_USER = 3;
+
   start(executionId: string, userId: string): AbortController {
     if (this.running.has(executionId))
       throw new AppError('CONFLICT', 'An execution with this id is already running');
+    let mine = 0;
+    for (const r of this.running.values()) if (r.userId === userId) mine++;
+    if (mine >= ExecutionRegistry.MAX_PER_USER)
+      throw new AppError(
+        'RATE_LIMITED',
+        `You already have ${mine} queries running; wait for one to finish or cancel it`,
+      );
     const controller = new AbortController();
     this.running.set(executionId, { userId, controller });
     return controller;

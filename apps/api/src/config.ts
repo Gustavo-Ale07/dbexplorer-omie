@@ -78,6 +78,7 @@ const envSchema = z.object({
   OMIE_MAX_API_CALLS: int(100, 1, 10_000),
   OMIE_MAX_WRITE_ROWS: int(50, 1, 1000),
   OMIE_CONCURRENCY: int(4, 1, 4),
+  OMIE_MAX_CALLS_PER_MINUTE: int(240, 1, 2000),
   OMIE_MOCK_LATENCY_MS: int(0, 0, 5000),
 
   AI_PROVIDER: z.enum(['disabled', 'mock', 'openai', 'anthropic']).default('disabled'),
@@ -133,6 +134,7 @@ export interface AppConfig {
     maxApiCalls: number;
     maxWriteRows: number;
     concurrency: number;
+    maxCallsPerMinute: number;
     mockLatencyMs: number;
   };
   ai: {
@@ -281,6 +283,7 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
       maxApiCalls: e.OMIE_MAX_API_CALLS,
       maxWriteRows: e.OMIE_MAX_WRITE_ROWS,
       concurrency: e.OMIE_CONCURRENCY,
+      maxCallsPerMinute: e.OMIE_MAX_CALLS_PER_MINUTE,
       mockLatencyMs: e.OMIE_MOCK_LATENCY_MS,
     },
     ai: {

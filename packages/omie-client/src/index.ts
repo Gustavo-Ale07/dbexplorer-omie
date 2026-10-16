@@ -1,7 +1,7 @@
 export * from './types';
 export { classifyResponse } from './classify';
 export type { Classification } from './classify';
-export { ConcurrencyLimiter, abortError, mapWithConcurrency } from './limiter';
+export { CallRateLimiter, ConcurrencyLimiter, abortError, mapWithConcurrency } from './limiter';
 export { OmieClient, abortableSleep } from './client';
 export type { OmieClientOptions, OmieCallResult, RetryPolicy } from './client';
 export { createHttpTransport, assertSafeRequest } from './http-transport';

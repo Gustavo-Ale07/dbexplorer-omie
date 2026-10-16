@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { isAppError } from '@dbx/shared';
-import { ConcurrencyLimiter, abortError, mapWithConcurrency } from './limiter';
+import { CallRateLimiter, ConcurrencyLimiter, abortError, mapWithConcurrency } from './limiter';
 
 const tick = () => new Promise((r) => setTimeout(r, 1));
 
@@ -85,5 +85,38 @@ describe('mapWithConcurrency', () => {
 
   it('handles empty input', async () => {
     expect(await mapWithConcurrency([], 3, async () => 1)).toEqual([]);
+  });
+});
+
+describe('CallRateLimiter', () => {
+  function fakeClock() {
+    let now = 0;
+    const slept: number[] = [];
+    const sleep = (ms: number, signal?: AbortSignal) => {
+      if (signal?.aborted) return Promise.reject(abortError(signal));
+      slept.push(ms);
+      now += ms;
+      return Promise.resolve();
+    };
+    return { now: () => now, sleep, slept, elapsed: () => now };
+  }
+
+  it('allows a burst, then paces calls to the configured rate', async () => {
+    const clock = fakeClock();
+    const limiter = new CallRateLimiter(60, clock.now, clock.sleep); // 1/s, burst of 10
+    for (let i = 0; i < 10; i++) await limiter.take();
+    expect(clock.elapsed()).toBe(0);
+    for (let i = 0; i < 5; i++) await limiter.take();
+    expect(clock.elapsed()).toBe(5000);
+  });
+
+  it('rejects aborted callers without consuming a token', async () => {
+    const clock = fakeClock();
+    const limiter = new CallRateLimiter(6, clock.now, clock.sleep); // burst of 1
+    const controller = new AbortController();
+    controller.abort();
+    await expect(limiter.take(controller.signal)).rejects.toSatisfy(isAppError);
+    await limiter.take();
+    expect(clock.elapsed()).toBe(0);
   });
 });

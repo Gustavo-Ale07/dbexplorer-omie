@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { AppError, isAppError, redact } from '@dbx/shared';
 import { classifyResponse } from './classify';
-import { ConcurrencyLimiter, abortError } from './limiter';
+import { CallRateLimiter, ConcurrencyLimiter, abortError } from './limiter';
 import type {
   CallContext,
   OmieCallTrace,
@@ -22,6 +22,8 @@ export interface OmieClientOptions {
   transport: OmieTransport;
   /** Process-wide cap on in-flight Omie requests (Omie allows 4 per IP + app + method). */
   concurrency: number;
+  /** Process-wide cap on Omie calls per minute (retries included); unlimited when omitted. */
+  maxCallsPerMinute?: number;
   /** Per-attempt timeout. */
   timeoutMs: number;
   retry?: Partial<RetryPolicy>;
@@ -60,6 +62,7 @@ export function abortableSleep(ms: number, signal?: AbortSignal): Promise<void> 
 export class OmieClient {
   readonly mode: OmieMode;
   private readonly limiter: ConcurrencyLimiter;
+  private readonly rate: CallRateLimiter | undefined;
   private readonly retry: RetryPolicy;
   private readonly redactor: (value: unknown) => unknown;
   private readonly sleep: (ms: number, signal?: AbortSignal) => Promise<void>;
@@ -69,6 +72,10 @@ export class OmieClient {
   constructor(private readonly options: OmieClientOptions) {
     this.mode = options.transport.mode;
     this.limiter = new ConcurrencyLimiter(options.concurrency);
+    this.rate =
+      options.maxCallsPerMinute === undefined
+        ? undefined
+        : new CallRateLimiter(options.maxCallsPerMinute, Date.now, this.options.sleep);
     this.retry = { ...DEFAULT_RETRY, ...options.retry };
     this.redactor = options.redactor ?? redact;
     this.sleep = options.sleep ?? abortableSleep;
@@ -117,6 +124,7 @@ export class OmieClient {
 
       let response: TransportResponse;
       try {
+        await this.rate?.take(ctx.signal);
         response = await this.limiter.run(() => this.attempt(request, ctx.signal), ctx.signal);
       } catch (err) {
         if (ctx.signal?.aborted) {

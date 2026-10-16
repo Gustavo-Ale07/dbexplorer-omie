@@ -87,6 +87,13 @@ returning partial data:
 A SELECT without `LIMIT` gets an implicit `LIMIT OMIE_MAX_ROWS`. When more rows exist the result
 says `truncated: true` and the UI shows a message; it is never cut silently.
 
+Two limits protect the shared Omie quota rather than a single query:
+
+- `OMIE_MAX_CALLS_PER_MINUTE` (default 240) is a token bucket shared by the whole process. Calls
+  over the budget wait their turn (still bounded by the query timeout) instead of reaching Omie,
+  which temporarily blocks keys that exceed its own limits.
+- Each user can have at most 3 queries running at once (`RATE_LIMITED` beyond that).
+
 ## Writes
 
 ```mermaid

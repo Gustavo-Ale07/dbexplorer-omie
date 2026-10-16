@@ -31,6 +31,7 @@ export function createOmieRuntime(
   const client = new OmieClient({
     transport,
     concurrency: config.omie.concurrency,
+    maxCallsPerMinute: config.omie.maxCallsPerMinute,
     timeoutMs: config.omie.timeoutMs,
     redactor,
   });

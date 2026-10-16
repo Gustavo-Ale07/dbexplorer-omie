@@ -65,6 +65,77 @@ export class ConcurrencyLimiter {
   }
 }
 
+/**
+ * Token bucket on Omie calls per minute, shared by the whole process: keeps heavy scans from
+ * burning the app_key quota (Omie blocks keys that exceed it). Callers wait in FIFO order; the wait
+ * is abortable, so query timeouts and cancellation still apply.
+ */
+export class CallRateLimiter {
+  private tokens: number;
+  private last: number;
+  private tail: Promise<void> = Promise.resolve();
+  private readonly capacity: number;
+  private readonly perMs: number;
+
+  constructor(
+    readonly perMinute: number,
+    private readonly now: () => number = Date.now,
+    private readonly sleep: (ms: number, signal?: AbortSignal) => Promise<void> = defaultSleep,
+  ) {
+    if (!Number.isInteger(perMinute) || perMinute < 1)
+      throw new Error('perMinute must be a positive integer');
+    this.capacity = Math.max(1, Math.floor(perMinute / 6));
+    this.tokens = this.capacity;
+    this.perMs = perMinute / 60_000;
+    this.last = now();
+  }
+
+  /** Resolves when the caller may make one call. */
+  take(signal?: AbortSignal): Promise<void> {
+    if (signal?.aborted) return Promise.reject(abortError(signal));
+    const turn = this.tail.then(() => this.wait(signal));
+    // A cancelled waiter must not block the ones behind it (it skips its turn without a token).
+    this.tail = turn.catch(() => undefined);
+    if (!signal) return turn;
+    let onAbort: () => void = () => undefined;
+    const aborted = new Promise<never>((_, reject) => {
+      onAbort = () => reject(abortError(signal));
+      signal.addEventListener('abort', onAbort, { once: true });
+    });
+    return Promise.race([turn, aborted]).finally(() =>
+      signal.removeEventListener('abort', onAbort),
+    );
+  }
+
+  private async wait(signal?: AbortSignal): Promise<void> {
+    for (;;) {
+      if (signal?.aborted) throw abortError(signal);
+      const now = this.now();
+      this.tokens = Math.min(this.capacity, this.tokens + (now - this.last) * this.perMs);
+      this.last = now;
+      if (this.tokens >= 1) {
+        this.tokens -= 1;
+        return;
+      }
+      await this.sleep(Math.ceil((1 - this.tokens) / this.perMs), signal);
+    }
+  }
+}
+
+function defaultSleep(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      signal?.removeEventListener('abort', onAbort);
+      resolve();
+    }, ms);
+    const onAbort = () => {
+      clearTimeout(timer);
+      reject(abortError(signal));
+    };
+    signal?.addEventListener('abort', onAbort, { once: true });
+  });
+}
+
 /** Maps an abort reason to the matching typed error. */
 export function abortError(signal: AbortSignal | undefined): AppError {
   const reason: unknown = signal?.reason;
