@@ -3,7 +3,8 @@ import { ApiError } from './client';
 /** pt-BR messages for the API error codes (the API itself answers in English). */
 export const ERROR_MESSAGES: Record<string, string> = {
   AUTH_REQUIRED: 'Faça login para continuar.',
-  INVALID_CREDENTIALS: 'E-mail ou senha inválidos.',
+  INVALID_CREDENTIALS:
+    'E-mail ou senha inválidos. Após várias falhas seguidas, a conta fica bloqueada por um tempo.',
   SESSION_EXPIRED: 'Sua sessão expirou. Faça login novamente.',
   ACCOUNT_LOCKED: 'Conta bloqueada temporariamente por excesso de tentativas. Tente mais tarde.',
   FORBIDDEN: 'Você não tem permissão para esta ação.',

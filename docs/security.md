@@ -41,7 +41,8 @@ anonymous users.
   of upper case, lower case, digits and symbols. The bootstrap administrator must change the
   password on first login (`PASSWORD_CHANGE_REQUIRED` until then).
 - Login failures are counted per account; after `LOGIN_MAX_ATTEMPTS` the account is locked for
-  `LOGIN_LOCK_MINUTES` (`ACCOUNT_LOCKED`). Login and password change are also rate-limited per IP.
+  `LOGIN_LOCK_MINUTES`. A locked account gets the same `INVALID_CREDENTIALS` answer as a wrong
+  password, so lockouts do not reveal which e-mails exist; the lock is recorded in the audit log. Login and password change are also rate-limited per IP.
   Unknown e-mails and wrong passwords return the same error, and the password hash is verified
   against a dummy hash for unknown users to keep timing similar.
 - Session tokens are 256-bit random values. Only their SHA-256 hash is stored. A new token is

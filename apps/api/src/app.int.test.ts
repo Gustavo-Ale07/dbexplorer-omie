@@ -183,9 +183,13 @@ describe('authentication', () => {
     expect(codeOf(first)).toBe('INVALID_CREDENTIALS');
     expect(codeOf(await attempt('nobody'))).toBe('INVALID_CREDENTIALS');
     const third = await attempt('again-wrong');
-    expect(codeOf(third)).toBe('ACCOUNT_LOCKED');
+    // A lockout looks exactly like bad credentials (no account enumeration).
+    expect(third.statusCode).toBe(401);
+    expect(codeOf(third)).toBe('INVALID_CREDENTIALS');
     // Even the right password is refused while locked (brute force protection).
-    expect(codeOf(await attempt(ADMIN.password))).toBe('ACCOUNT_LOCKED');
+    const locked = await attempt(ADMIN.password);
+    expect(codeOf(locked)).toBe('INVALID_CREDENTIALS');
+    expect(locked.headers['set-cookie']).toBeUndefined();
     const unknown = await h.call(null, {
       method: 'POST',
       url: '/api/auth/login',

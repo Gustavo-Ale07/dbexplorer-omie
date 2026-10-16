@@ -36,13 +36,13 @@ Special characters such as `@`, `/`, `:` or `#` in `POSTGRES_PASSWORD` break the
 
 ## Login
 
-| Symptom                                                | Cause and fix                                                                       |
-| ------------------------------------------------------ | ----------------------------------------------------------------------------------- |
-| `CSRF_REJECTED` on login                               | `APP_URL` differs from the address in the browser (scheme, host or port).           |
-| Login succeeds but you are sent back to the login page | The session cookie is `Secure`: open the app over HTTPS.                            |
-| `ACCOUNT_LOCKED`                                       | Too many failures. Wait `LOGIN_LOCK_MINUTES` or ask an admin to reset the password. |
-| `RATE_LIMITED`                                         | Too many requests from one IP. Behind a proxy, check `TRUST_PROXY`.                 |
-| Bootstrap admin credentials are ignored                | The admin is created only when the database has no users. Change it in the UI.      |
+| Symptom                                                | Cause and fix                                                                                                                                          |
+| ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `CSRF_REJECTED` on login                               | `APP_URL` differs from the address in the browser (scheme, host or port).                                                                              |
+| Login succeeds but you are sent back to the login page | The session cookie is `Secure`: open the app over HTTPS.                                                                                               |
+| `INVALID_CREDENTIALS` with the right password          | The account is locked after repeated failures. Wait `LOGIN_LOCK_MINUTES` or ask an admin to reset the password (the audit log shows `ACCOUNT_LOCKED`). |
+| `RATE_LIMITED`                                         | Too many requests from one IP. Behind a proxy, check `TRUST_PROXY`.                                                                                    |
+| Bootstrap admin credentials are ignored                | The admin is created only when the database has no users. Change it in the UI.                                                                         |
 
 **All administrators locked out.** Reset one password directly in the database. Generate an
 Argon2id hash with the bundled library and update the row:

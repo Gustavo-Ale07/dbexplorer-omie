@@ -65,9 +65,12 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
           errorCode: code,
           details: { reason },
         });
-        throw code === 'ACCOUNT_LOCKED'
-          ? new AppError('ACCOUNT_LOCKED', 'Too many failed attempts. Try again later.')
-          : new AppError('INVALID_CREDENTIALS', 'Invalid e-mail or password');
+        // Locked accounts get the same answer as bad credentials, so lockouts cannot be used to
+        // find out which e-mails exist; the lock is visible in the audit log.
+        throw new AppError(
+          'INVALID_CREDENTIALS',
+          'Invalid e-mail or password. Repeated failures lock the account for a while.',
+        );
       };
 
       if (!user) {
