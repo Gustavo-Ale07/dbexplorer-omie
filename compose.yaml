@@ -6,7 +6,11 @@ name: dbexplorer-omie
 
 services:
   app:
-    build: .
+    build:
+      context: .
+      args:
+        # Shown in the UI footer: GIT_COMMIT=$(git rev-parse --short HEAD) docker compose up -d --build
+        GIT_COMMIT: ${GIT_COMMIT:-}
     image: dbexplorer-omie:latest
     restart: unless-stopped
     env_file: .env

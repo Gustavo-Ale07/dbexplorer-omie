@@ -37,7 +37,9 @@ RUN pnpm --filter @dbx/api deploy --prod --legacy /out \
 # runtime: minimal image, non-root user, no build tooling
 # ---------------------------------------------------------------------------
 FROM ${NODE_IMAGE} AS runtime
+ARG GIT_COMMIT=
 ENV NODE_ENV=production \
+    GIT_COMMIT=${GIT_COMMIT} \
     HOST=0.0.0.0 \
     PORT=3001 \
     STATIC_DIR=/app/public
