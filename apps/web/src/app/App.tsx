@@ -7,6 +7,7 @@ import { ChangePasswordPage } from '../pages/ChangePasswordPage';
 import { Layout } from '../components/Layout';
 import { SessionContext } from './session';
 import { useTheme } from './theme';
+import { clearSavedTabs } from '../explorer/tabs';
 
 export function App() {
   const qc = useQueryClient();
@@ -51,6 +52,7 @@ export function App() {
     } catch {
       // The session is dropped locally either way.
     } finally {
+      clearSavedTabs();
       qc.clear();
       qc.setQueryData(['me'], null);
     }

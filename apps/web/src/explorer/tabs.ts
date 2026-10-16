@@ -61,6 +61,18 @@ export function loadTabs(userId: string): { tabs: EditorTab[]; activeId: string 
   return { tabs: [first], activeId: first.id };
 }
 
+/** Drops every saved editor tab: SQL text can hold customer data, so nothing outlives a logout. */
+export function clearSavedTabs(): void {
+  try {
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const k = localStorage.key(i);
+      if (k?.startsWith('dbx.tabs.')) localStorage.removeItem(k);
+    }
+  } catch {
+    // Storage unavailable: nothing was saved either.
+  }
+}
+
 export function saveTabs(userId: string, tabs: EditorTab[], activeId: string): void {
   try {
     localStorage.setItem(key(userId), JSON.stringify({ tabs: tabs.slice(0, MAX_TABS), activeId }));

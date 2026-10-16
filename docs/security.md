@@ -105,9 +105,14 @@ failed.
 - Limits on rows, API calls, in-memory rows, JOIN fan-out, query time and SQL length
   (20,000 characters) bound the work any statement can cause. A user can cancel their own running
   query; an administrator can cancel any.
+- `LIKE` is matched by a linear-time wildcard matcher, not a regular expression, so a crafted
+  pattern cannot stall the event loop (ReDoS).
+- The shared Omie quota is protected by a process-wide budget of calls per minute
+  (`OMIE_MAX_CALLS_PER_MINUTE`) and a cap of 3 concurrent queries per user.
 - The API inspector executes **only** read calls from the registry allowlist, chosen by id. The
   URL and method are never user-controlled. Parameters are validated as plain JSON objects
-  (prototype-polluting keys such as `__proto__` are rejected).
+  (prototype-polluting keys such as `__proto__` are rejected), and page sizes are clamped to
+  `OMIE_MAX_ROWS`.
 
 ## AI assistant
 
@@ -168,5 +173,7 @@ authorization headers.
   record could still be changed in Omie by someone else in between.
 - Some write payloads are marked UNCONFIRMED in the registry (see
   [omie-resources.md](omie-resources.md)); test them against a sandbox account first.
-- Rate limits and the login counter are kept per process. Run a single instance, or put a shared
+- Open editor tabs are kept in the browser's `localStorage` so drafts survive a reload. They are
+  removed on logout; closing the browser without logging out leaves them on that device.
+- Rate limits and the Omie call budget are kept per process. Run a single instance, or put a shared
   limiter in front of several.
