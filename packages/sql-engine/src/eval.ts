@@ -142,17 +142,55 @@ export function orderValues(a: Value, b: Value): number {
   return collator.compare(String(a), String(b));
 }
 
-export function likeToRegExp(pattern: string, escape?: string): RegExp {
-  let out = '';
-  for (let i = 0; i < pattern.length; i++) {
-    const ch = pattern[i] as string;
-    if (escape !== undefined && ch === escape && i + 1 < pattern.length) {
-      out += (pattern[++i] as string).replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
-    } else if (ch === '%') out += '.*';
-    else if (ch === '_') out += '.';
-    else out += ch.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
+type LikeToken = { kind: 'char'; ch: string } | { kind: 'one' } | { kind: 'many' };
+
+const sameChar = (a: string, b: string) =>
+  a === b || a.toLowerCase() === b.toLowerCase() || a.toUpperCase() === b.toUpperCase();
+
+/**
+ * Compiles a LIKE pattern (case-insensitive, `%` and `_`, optional ESCAPE) into a matcher.
+ *
+ * Deliberately not a RegExp: patterns such as `%a%a%a…b` make backtracking regex engines take
+ * exponential time on the synchronous event loop. This greedy wildcard matcher only backtracks to
+ * the last `%`, so it runs in O(pattern × text) at worst.
+ */
+export function compileLike(pattern: string, escape?: string): (text: string) => boolean {
+  const chars = Array.from(pattern);
+  const tokens: LikeToken[] = [];
+  for (let i = 0; i < chars.length; i++) {
+    const ch = chars[i] as string;
+    if (escape !== undefined && ch === escape && i + 1 < chars.length) {
+      tokens.push({ kind: 'char', ch: chars[++i] as string });
+    } else if (ch === '%') {
+      if (tokens.at(-1)?.kind !== 'many') tokens.push({ kind: 'many' });
+    } else if (ch === '_') tokens.push({ kind: 'one' });
+    else tokens.push({ kind: 'char', ch });
   }
-  return new RegExp(`^${out}$`, 'is');
+  return (input) => {
+    const text = Array.from(input);
+    let t = 0;
+    let p = 0;
+    let starP = -1;
+    let starT = 0;
+    while (t < text.length) {
+      const tok = tokens[p];
+      if (
+        tok &&
+        (tok.kind === 'one' || (tok.kind === 'char' && sameChar(tok.ch, text[t] as string)))
+      ) {
+        t++;
+        p++;
+      } else if (tok?.kind === 'many') {
+        starP = p++;
+        starT = t;
+      } else if (starP >= 0) {
+        p = starP + 1;
+        t = ++starT;
+      } else return false;
+    }
+    while (tokens[p]?.kind === 'many') p++;
+    return p === tokens.length;
+  };
 }
 
 type Fn = (row: Row) => Value;
@@ -343,11 +381,11 @@ export function compile(expr: Expr, scope: Scope, opts: CompileOptions = {}): Fn
       const escape = expr.escape;
       if (expr.pattern.kind === 'literal') {
         if (expr.pattern.value === null) return () => null;
-        const re = likeToRegExp(String(expr.pattern.value), escape);
+        const matches = compileLike(String(expr.pattern.value), escape);
         return (row) => {
           const v = target(row);
           if (v === null) return null;
-          const m = re.test(String(v));
+          const m = matches(String(v));
           return negated ? !m : m;
         };
       }
@@ -356,7 +394,7 @@ export function compile(expr: Expr, scope: Scope, opts: CompileOptions = {}): Fn
         const v = target(row);
         const p = pattern(row);
         if (v === null || p === null) return null;
-        const m = likeToRegExp(String(p), escape).test(String(v));
+        const m = compileLike(String(p), escape)(String(v));
         return negated ? !m : m;
       };
     }

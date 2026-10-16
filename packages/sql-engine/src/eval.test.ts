@@ -2,19 +2,33 @@ import { describe, expect, it } from 'vitest';
 import { OmieClient, createMockTransport } from '@dbx/omie-client';
 import { RESOURCES, validateRegistry } from './registry';
 import type { ResourceDef } from './registry/types';
-import { cleanFloat, compareValues, likeToRegExp, orderValues, suggest } from './eval';
+import { cleanFloat, compareValues, compileLike, orderValues, suggest } from './eval';
 import { omieDateToIso, toOmieDate } from './normalize';
 import { SqlEngine } from './engine';
 
 describe('value helpers', () => {
   it('translates LIKE patterns, honouring ESCAPE and regex metacharacters', () => {
-    expect(likeToRegExp('abc%').test('ABCdef')).toBe(true);
-    expect(likeToRegExp('a_c').test('abc')).toBe(true);
-    expect(likeToRegExp('a_c').test('abbc')).toBe(false);
-    expect(likeToRegExp('100!%', '!').test('100%')).toBe(true);
-    expect(likeToRegExp('100!%', '!').test('1000')).toBe(false);
-    expect(likeToRegExp('a.c').test('abc')).toBe(false);
-    expect(likeToRegExp('(x)*').test('(x)*')).toBe(true);
+    expect(compileLike('abc%')('ABCdef')).toBe(true);
+    expect(compileLike('a_c')('abc')).toBe(true);
+    expect(compileLike('a_c')('abbc')).toBe(false);
+    expect(compileLike('100!%', '!')('100%')).toBe(true);
+    expect(compileLike('100!%', '!')('1000')).toBe(false);
+    expect(compileLike('a.c')('abc')).toBe(false);
+    expect(compileLike('(x)*')('(x)*')).toBe(true);
+    expect(compileLike('%')('')).toBe(true);
+    expect(compileLike('_')('')).toBe(false);
+    expect(compileLike('%são%')('SÃO PAULO')).toBe(true);
+    expect(compileLike('a%b%c')('axxbyyc')).toBe(true);
+    expect(compileLike('a%b%c')('axxbyy')).toBe(false);
+    expect(compileLike('%ab')('aab')).toBe(true);
+    expect(compileLike('line1%line2')('line1\nline2')).toBe(true);
+  });
+
+  it('matches LIKE in linear time on patterns that make backtracking regexes explode', () => {
+    const start = performance.now();
+    const text = 'a'.repeat(5000);
+    expect(compileLike(`${'%a'.repeat(40)}%b`)(text)).toBe(false);
+    expect(performance.now() - start).toBeLessThan(1000);
   });
 
   it('compares with NULL as unknown and orders NULLs first', () => {
