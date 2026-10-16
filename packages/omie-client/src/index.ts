@@ -1,0 +1,12 @@
+export * from './types';
+export { classifyResponse } from './classify';
+export type { Classification } from './classify';
+export { ConcurrencyLimiter, abortError, mapWithConcurrency } from './limiter';
+export { OmieClient, abortableSleep } from './client';
+export type { OmieClientOptions, OmieCallResult, RetryPolicy } from './client';
+export { createHttpTransport, assertSafeRequest } from './http-transport';
+export type { HttpTransportOptions } from './http-transport';
+export { createMockTransport } from './mock/mock-transport';
+export type { MockTransport, MockTransportOptions } from './mock/mock-transport';
+export { buildDataset, LOCAIS_ESTOQUE, CONTAS_CORRENTES } from './mock/fixtures';
+export type { MockDataset, OmieRecord } from './mock/fixtures';
